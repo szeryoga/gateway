@@ -1,0 +1,18 @@
+domains:
+  - host: tochka.etalonfood.com
+    routes:
+      - path: /app
+        upstream: http://tochka-frontend:80
+      - path: /admin
+        upstream: http://tochka-admin:80
+      - path: /api
+        upstream: http://tochka-backend:8000
+
+  - host: karabas.etalonfood.com
+    routes:
+      - path: /app
+        upstream: http://karabas-frontend:80
+      - path: /admin
+        upstream: http://karabas-admin:80
+      - path: /api
+        upstream: http://karabas-backend:8000
