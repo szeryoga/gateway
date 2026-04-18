@@ -135,6 +135,12 @@ domains:
 - HTTP server block на `80` с `/.well-known/acme-challenge/` и redirect на HTTPS
 - HTTPS server block на `443` с сертификатом из `/etc/letsencrypt/live/<host>/`
 
+Маршруты работают как path-prefix gateway:
+
+- запрос на `/admin` уходит в upstream как `/`
+- запрос на `/admin/assets/app.js` уходит в upstream как `/assets/app.js`
+- запрос на `/api/users` уходит в upstream как `/users`
+
 ## Выпуск сертификатов через Certbot
 
 Используется `webroot`-режим: challenge-файлы пишутся в `./certbot/www`, а Nginx отдает их через `/.well-known/acme-challenge/`.

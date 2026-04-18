@@ -151,12 +151,21 @@ def render_route_locations(routes: list[dict]) -> str:
             block = f"""\
         location = {path} {{
             set $gateway_upstream {upstream};
+            rewrite ^ {"/"} break;
+{headers}
+            proxy_pass $gateway_upstream;
+        }}
+
+        location = {path}/ {{
+            set $gateway_upstream {upstream};
+            rewrite ^ {"/"} break;
 {headers}
             proxy_pass $gateway_upstream;
         }}
 
         location ^~ {path}/ {{
             set $gateway_upstream {upstream};
+            rewrite ^{path}(/.*)$ $1 break;
 {headers}
             proxy_pass $gateway_upstream;
         }}"""
