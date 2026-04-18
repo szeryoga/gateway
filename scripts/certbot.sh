@@ -41,6 +41,10 @@ cert_exists() {
     sh -c "test -f '/etc/letsencrypt/live/${DOMAIN}/fullchain.pem' && test -f '/etc/letsencrypt/live/${DOMAIN}/privkey.pem'"
 }
 
+gateway_has_domain_cert_config() {
+  docker exec gateway sh -c "grep -Fq '/etc/letsencrypt/live/${DOMAIN}/fullchain.pem' /etc/nginx/nginx.conf"
+}
+
 mkdir -p \
   "${PROJECT_DIR}/certbot/www" \
   "${PROJECT_DIR}/certbot/conf"
@@ -78,10 +82,10 @@ if ! cert_exists; then
   exit 1
 fi
 
-if [ "${CERT_EXISTED}" -eq 1 ]; then
+if [ "${CERT_EXISTED}" -eq 1 ] && gateway_has_domain_cert_config; then
   echo "Reloading Nginx in gateway"
   docker exec gateway nginx -s reload
 else
-  echo "Restarting gateway to switch from fallback cert to Let's Encrypt cert"
+  echo "Restarting gateway to switch to Let's Encrypt certificate"
   docker compose -f "${PROJECT_DIR}/compose.yaml" --project-directory "${PROJECT_DIR}" restart gateway
 fi
