@@ -34,6 +34,13 @@ if [ "${CERTBOT_EMAIL:-}" = "" ]; then
   exit 1
 fi
 
+cert_exists() {
+  docker run --rm \
+    -v "${PROJECT_DIR}/certbot/conf:/etc/letsencrypt" \
+    alpine:3.22 \
+    sh -c "test -f '/etc/letsencrypt/live/${DOMAIN}/fullchain.pem' && test -f '/etc/letsencrypt/live/${DOMAIN}/privkey.pem'"
+}
+
 mkdir -p \
   "${PROJECT_DIR}/certbot/www" \
   "${PROJECT_DIR}/certbot/conf"
@@ -46,10 +53,9 @@ fi
 echo "Ensuring gateway container is running"
 docker compose -f "${PROJECT_DIR}/compose.yaml" --project-directory "${PROJECT_DIR}" up -d gateway
 
-CERT_PATH="${PROJECT_DIR}/certbot/conf/live/${DOMAIN}/fullchain.pem"
 CERT_EXISTED=0
 
-if [ -f "${CERT_PATH}" ]; then
+if cert_exists; then
   CERT_EXISTED=1
 fi
 
@@ -67,7 +73,7 @@ docker run --rm \
   -d "${DOMAIN}" \
   --keep-until-expiring
 
-if [ ! -f "${CERT_PATH}" ]; then
+if ! cert_exists; then
   echo "ERROR: certificate was not created for ${DOMAIN}" >&2
   exit 1
 fi
