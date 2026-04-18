@@ -18,11 +18,14 @@ Production-ready reverse proxy gateway на базе Nginx с генерацие
 - `config/routes.yml` — декларативные маршруты по доменам.
 - `scripts/generate_nginx_conf.py` — валидация YAML и генерация `nginx.conf`.
 - `scripts/entrypoint.sh` — генерация конфига, `nginx -t`, запуск Nginx.
+- `scripts/certbot.sh` — выпуск или перевыпуск сертификата Let’s Encrypt для одного домена.
 - `nginx/nginx.conf.template` — шаблон базового конфига.
 
 ## 1. Создать Docker network
 
 Имя сети должно совпадать со значением `GATEWAY_NETWORK` в `.env`.
+
+Так как в `compose.yaml` используется `external` network, Docker Compose не создаст её автоматически. Если сети с именем из `GATEWAY_NETWORK` ещё нет, создайте её один раз вручную перед первым запуском gateway.
 
 ```bash
 docker network create gateway-net
@@ -44,6 +47,7 @@ cp .env.example .env
 GATEWAY_NETWORK=gateway-net
 GATEWAY_HTTP_PORT=80
 GATEWAY_HTTPS_PORT=443
+CERTBOT_EMAIL=admin@example.com
 ```
 
 ## 3. Подготовить каталоги для Certbot
@@ -135,73 +139,51 @@ domains:
 
 Используется `webroot`-режим: challenge-файлы пишутся в `./certbot/www`, а Nginx отдает их через `/.well-known/acme-challenge/`.
 
-Перед выпуском сертификатов gateway должен уже работать и слушать `80` порт.
+Для выпуска и перевыпуска сертификатов используйте helper-скрипт:
+
+```bash
+./scripts/certbot.sh <domain>
+```
+
+Скрипт делает следующее:
+
+- подхватывает `.env`
+- при отсутствии создает Docker network `${GATEWAY_NETWORK}`
+- поднимает `gateway`, чтобы ACME challenge был доступен по `80` порту
+- запускает `certbot` в `webroot`-режиме
+- если сертификат выпускается впервые, выполняет `docker compose restart gateway`
+- если сертификат уже существует и был обновлен, выполняет `docker exec gateway nginx -s reload`
 
 Пример для `tochka.etalonfood.com`:
 
 ```bash
-docker run --rm \
-  -v "$(pwd)/certbot/www:/var/www/certbot" \
-  -v "$(pwd)/certbot/conf:/etc/letsencrypt" \
-  certbot/certbot certonly \
-  --webroot \
-  --webroot-path /var/www/certbot \
-  -d tochka.etalonfood.com
+./scripts/certbot.sh tochka.etalonfood.com
 ```
 
 Пример для `karabas.etalonfood.com`:
 
 ```bash
-docker run --rm \
-  -v "$(pwd)/certbot/www:/var/www/certbot" \
-  -v "$(pwd)/certbot/conf:/etc/letsencrypt" \
-  certbot/certbot certonly \
-  --webroot \
-  --webroot-path /var/www/certbot \
-  -d karabas.etalonfood.com
+./scripts/certbot.sh karabas.etalonfood.com
 ```
 
-Оба домена одной командой:
+Оба домена по очереди:
 
 ```bash
-docker run --rm \
-  -v "$(pwd)/certbot/www:/var/www/certbot" \
-  -v "$(pwd)/certbot/conf:/etc/letsencrypt" \
-  certbot/certbot certonly \
-  --webroot \
-  --webroot-path /var/www/certbot \
-  -d tochka.etalonfood.com \
-  -d karabas.etalonfood.com
+./scripts/certbot.sh tochka.etalonfood.com
+./scripts/certbot.sh karabas.etalonfood.com
 ```
 
-После успешного выпуска перезапустите gateway или выполните reload:
+Скрипт сам выбирает правильное действие:
 
-```bash
-docker exec gateway nginx -s reload
-```
-
-Для самого первого выпуска нужен именно перезапуск контейнера, чтобы генератор пересобрал `nginx.conf` и заменил fallback сертификат на путь `/etc/letsencrypt/live/<host>/...`:
-
-```bash
-docker compose restart gateway
-```
-
-После этого для всех последующих продлений достаточно обычного:
-
-```bash
-docker exec gateway nginx -s reload
-```
+- первый выпуск: `docker compose restart gateway`
+- перевыпуск или продление существующего сертификата: `docker exec gateway nginx -s reload`
 
 ## Автопродление сертификатов
 
 Пример `cron`:
 
 ```cron
-0 3 * * * cd /path/to/gateway && docker run --rm \
-  -v "$(pwd)/certbot/www:/var/www/certbot" \
-  -v "$(pwd)/certbot/conf:/etc/letsencrypt" \
-  certbot/certbot renew --webroot --webroot-path /var/www/certbot \
-  && docker exec gateway nginx -s reload
+0 3 * * * cd /path/to/gateway && ./scripts/certbot.sh tochka.etalonfood.com && ./scripts/certbot.sh karabas.etalonfood.com
 ```
 
 Пример `systemd` unit:
@@ -213,11 +195,7 @@ Description=Renew Let's Encrypt certificates for gateway
 [Service]
 Type=oneshot
 WorkingDirectory=/path/to/gateway
-ExecStart=/usr/bin/docker run --rm \
-  -v /path/to/gateway/certbot/www:/var/www/certbot \
-  -v /path/to/gateway/certbot/conf:/etc/letsencrypt \
-  certbot/certbot renew --webroot --webroot-path /var/www/certbot
-ExecStartPost=/usr/bin/docker exec gateway nginx -s reload
+ExecStart=/bin/sh -lc './scripts/certbot.sh tochka.etalonfood.com && ./scripts/certbot.sh karabas.etalonfood.com'
 ```
 
 Пример `systemd` timer:
@@ -234,7 +212,7 @@ Persistent=true
 WantedBy=timers.target
 ```
 
-Если нужен reload только после успешного renewal, используйте `ExecStartPost`, как в примере выше, либо shell-обертку с проверкой кода возврата.
+Скрипт сам выполняет `docker exec gateway nginx -s reload` после успешного обновления существующего сертификата. Для первичного выпуска он делает `docker compose restart gateway`, чтобы gateway пересобрал `nginx.conf` и переключился с fallback сертификата на настоящий.
 
 ## Как это работает
 
