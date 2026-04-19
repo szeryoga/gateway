@@ -9,12 +9,12 @@ domains:
         upstream: http://tochka-backend:8000
         strip_prefix: false
 
-  - host: karabas.etalonfood.com
+  - host: forever.etalonfood.com
     routes:
       - path: /app
-        upstream: http://karabas-frontend:80
+        upstream: http://forever-frontend:80
       - path: /admin
-        upstream: http://karabas-admin:80
+        upstream: http://forever-admin:80
       - path: /api
-        upstream: http://karabas-backend:8000
+        upstream: http://forever-backend:8000
         strip_prefix: false
