@@ -18,6 +18,7 @@ Production-ready reverse proxy gateway на базе Nginx с генерацие
 - `config/routes.yml` — декларативные маршруты по доменам.
 - `scripts/generate_nginx_conf.py` — валидация YAML и генерация `nginx.conf`.
 - `scripts/entrypoint.sh` — генерация конфига, `nginx -t`, запуск Nginx.
+- `scripts/start_gateway.sh` — старт gateway на production-сервере с автосозданием Docker network.
 - `scripts/certbot.sh` — выпуск или перевыпуск сертификата Let’s Encrypt для одного домена.
 - `nginx/nginx.conf.template` — шаблон базового конфига.
 
@@ -32,6 +33,18 @@ docker network create gateway-net
 ```
 
 Проверьте, что ваши upstream-сервисы подключены к этой же сети и доступны по service name, например `tochka-backend`, `karabas-admin` и т.д.
+
+На production-сервере вместо ручных команд удобнее использовать:
+
+```bash
+./scripts/start_gateway.sh
+```
+
+Скрипт сам:
+
+- подхватывает `.env`
+- создает `${GATEWAY_NETWORK}`, если сети еще нет
+- запускает `docker compose up -d --build`
 
 ## 2. Настроить `.env`
 
@@ -62,6 +75,14 @@ mkdir -p certbot/www certbot/conf
 - `./certbot/conf` в `/etc/letsencrypt` для сертификатов
 
 ## 4. Запустить gateway
+
+Рекомендуемый вариант:
+
+```bash
+./scripts/start_gateway.sh
+```
+
+Либо вручную:
 
 ```bash
 docker compose up -d --build
