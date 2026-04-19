@@ -111,6 +111,7 @@ domains:
         upstream: http://new-frontend:80
       - path: /api
         upstream: http://new-backend:8000
+        strip_prefix: false
 ```
 
 После изменения:
@@ -133,6 +134,7 @@ domains:
         upstream: http://tochka-admin:80
       - path: /api
         upstream: http://tochka-backend:8000
+        strip_prefix: false
 
   - host: karabas.etalonfood.com
     routes:
@@ -142,6 +144,7 @@ domains:
         upstream: http://karabas-admin:80
       - path: /api
         upstream: http://karabas-backend:8000
+        strip_prefix: false
 ```
 
 Генератор валидирует:
@@ -150,6 +153,7 @@ domains:
 - `path` начинается с `/`
 - комбинация `(host, path)` уникальна
 - `upstream` начинается с `http://` или `https://`
+- `strip_prefix` опционален и должен быть boolean
 
 Для каждого домена генерируются:
 
@@ -160,7 +164,9 @@ domains:
 
 - запрос на `/admin` уходит в upstream как `/`
 - запрос на `/admin/assets/app.js` уходит в upstream как `/assets/app.js`
-- запрос на `/api/users` уходит в upstream как `/users`
+- по умолчанию префикс маршрута срезается
+- если `strip_prefix: false`, исходный путь сохраняется
+- запрос на `/api/users` при `strip_prefix: false` уходит в upstream как `/api/users`
 
 ## Выпуск сертификатов через Certbot
 

@@ -95,6 +95,13 @@ def load_routes(path: Path) -> list[dict]:
                     "'http://' or 'https://'"
                 )
 
+            strip_prefix = route.get("strip_prefix", True)
+            if not isinstance(strip_prefix, bool):
+                fail(
+                    f"route '{host} {path_value}' has invalid 'strip_prefix': "
+                    "expected boolean"
+                )
+
             normalized_path = normalize_path(path_value)
             key = (host, normalized_path)
             if key in seen_pairs:
@@ -105,6 +112,7 @@ def load_routes(path: Path) -> list[dict]:
                 {
                     "path": normalized_path,
                     "upstream": upstream,
+                    "strip_prefix": strip_prefix,
                 }
             )
 
@@ -139,6 +147,7 @@ def render_route_locations(routes: list[dict]) -> str:
     for route in routes:
         path = route["path"]
         upstream = route["upstream"]
+        strip_prefix = route["strip_prefix"]
 
         if path == "/":
             block = f"""\
@@ -147,7 +156,7 @@ def render_route_locations(routes: list[dict]) -> str:
 {headers}
             proxy_pass $gateway_upstream;
         }}"""
-        else:
+        elif strip_prefix:
             block = f"""\
         location = {path} {{
             set $gateway_upstream {upstream};
@@ -166,6 +175,25 @@ def render_route_locations(routes: list[dict]) -> str:
         location ^~ {path}/ {{
             set $gateway_upstream {upstream};
             rewrite ^{path}(/.*)$ $1 break;
+{headers}
+            proxy_pass $gateway_upstream;
+        }}"""
+        else:
+            block = f"""\
+        location = {path} {{
+            set $gateway_upstream {upstream};
+{headers}
+            proxy_pass $gateway_upstream;
+        }}
+
+        location = {path}/ {{
+            set $gateway_upstream {upstream};
+{headers}
+            proxy_pass $gateway_upstream;
+        }}
+
+        location ^~ {path}/ {{
+            set $gateway_upstream {upstream};
 {headers}
             proxy_pass $gateway_upstream;
         }}"""
