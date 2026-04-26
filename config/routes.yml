@@ -18,3 +18,8 @@ domains:
       - path: /api
         upstream: http://forever-backend:8000
         strip_prefix: false
+
+  - host: portal.etalonfood.com
+    routes:
+      - path: /app
+        upstream: http://portal-frontend:80
