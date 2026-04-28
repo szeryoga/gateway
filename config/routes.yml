@@ -23,3 +23,18 @@ domains:
     routes:
       - path: /app
         upstream: http://portal-frontend:80
+
+  - host: improtherapy.etalonfood.com
+    routes:
+      - path: /app
+        upstream: http://improtherapy-frontend:80
+
+  - host: quiz10.etalonfood.com
+    routes:
+      - path: /app
+        upstream: http://quiz10-frontend:80
+      - path: /admin
+        upstream: http://quiz10-admin:80
+      - path: /api
+        upstream: http://quiz10-backend:8000
+        strip_prefix: false
