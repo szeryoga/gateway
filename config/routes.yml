@@ -1,5 +1,5 @@
 domains:
-  - host: tochka.etalonfood.com
+  - host: tochka.appline.tw1.ru
     routes:
       - path: /app
         upstream: http://tochka-frontend:80
@@ -9,7 +9,7 @@ domains:
         upstream: http://tochka-backend:8000
         strip_prefix: false
 
-  - host: forever.etalonfood.com
+  - host: forever.appline.tw1.ru
     routes:
       - path: /app
         upstream: http://forever-frontend:80
@@ -19,17 +19,12 @@ domains:
         upstream: http://forever-backend:8000
         strip_prefix: false
 
-  - host: portal.etalonfood.com
+  - host: portal.appline.tw1.ru
     routes:
       - path: /app
         upstream: http://portal-frontend:80
 
-  - host: improtherapy.etalonfood.com
-    routes:
-      - path: /app
-        upstream: http://improtherapy-frontend:80
-
-  - host: quiz10.etalonfood.com
+  - host: quiz10.appline.tw1.ru
     routes:
       - path: /app
         upstream: http://quiz10-frontend:80
