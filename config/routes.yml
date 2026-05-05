@@ -33,3 +33,13 @@ domains:
       - path: /api
         upstream: http://quiz10-backend:8000
         strip_prefix: false
+
+  - host: poputi.appline.tw1.ru
+    routes:
+      - path: /app
+        upstream: http://poputi-frontend:80
+      - path: /admin
+        upstream: http://poputi-admin:80
+      - path: /api
+        upstream: http://poputi-backend:8000
+        strip_prefix: false
