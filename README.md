@@ -247,6 +247,44 @@ WantedBy=timers.target
 
 Скрипт сам выполняет `docker exec gateway nginx -s reload` после успешного обновления существующего сертификата. Для первичного выпуска он делает `docker compose restart gateway`, чтобы gateway пересобрал `nginx.conf` и переключился с fallback сертификата на настоящий.
 
+Для продления всех доменов из `config/routes.yml` можно использовать:
+
+```bash
+./scripts/renew_all_certs.sh
+```
+
+Скрипт извлекает все `host` из `config/routes.yml` и последовательно запускает `./scripts/certbot.sh <domain>`.
+
+Чтобы автоматически добавить или обновить managed-запись в `crontab`, используйте:
+
+```bash
+./scripts/install_certbot_cron.sh
+```
+
+По умолчанию скрипт ставит запуск дважды в день:
+
+```cron
+0 3,15 * * * /bin/sh -lc 'cd /path/to/gateway && ./scripts/renew_all_certs.sh'
+```
+
+Изменить расписание можно так:
+
+```bash
+./scripts/install_certbot_cron.sh --schedule "0 2 * * *"
+```
+
+Посмотреть итоговый `crontab` без установки:
+
+```bash
+./scripts/install_certbot_cron.sh --dry-run
+```
+
+Удалить managed-запись:
+
+```bash
+./scripts/install_certbot_cron.sh --remove
+```
+
 ## Как это работает
 
 1. Контейнер запускает `scripts/entrypoint.sh`.
