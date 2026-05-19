@@ -128,6 +128,8 @@ docker compose restart gateway
 domains:
   - host: tochka.etalonfood.com
     routes:
+      - path: /
+        redirect_to: /app
       - path: /app
         upstream: http://tochka-frontend:80
       - path: /admin
@@ -152,7 +154,9 @@ domains:
 - `host` не пустой
 - `path` начинается с `/`
 - комбинация `(host, path)` уникальна
+- у маршрута должен быть ровно один из ключей: `upstream` или `redirect_to`
 - `upstream` начинается с `http://` или `https://`
+- `redirect_to` начинается с `/`
 - `strip_prefix` опционален и должен быть boolean
 
 Для каждого домена генерируются:
@@ -162,6 +166,7 @@ domains:
 
 Маршруты работают как path-prefix gateway:
 
+- `redirect_to` делает HTTP redirect, например с `/` на `/app`
 - запрос на `/admin` уходит в upstream как `/`
 - запрос на `/admin/assets/app.js` уходит в upstream как `/assets/app.js`
 - по умолчанию префикс маршрута срезается

@@ -87,12 +87,12 @@ def load_routes(path: Path) -> list[dict]:
                 fail(f"path '{path_value}' for host '{host}' must start with '/'")
 
             upstream = route.get("upstream")
-            if not isinstance(upstream, str) or not upstream:
-                fail(f"route '{host} {path_value}' has invalid 'upstream'")
-            if not (upstream.startswith("http://") or upstream.startswith("https://")):
+            redirect_to = route.get("redirect_to")
+
+            if bool(upstream) == bool(redirect_to):
                 fail(
-                    f"upstream '{upstream}' for host '{host}' must start with "
-                    "'http://' or 'https://'"
+                    f"route '{host} {path_value}' must define exactly one of "
+                    "'upstream' or 'redirect_to'"
                 )
 
             strip_prefix = route.get("strip_prefix", True)
@@ -102,19 +102,41 @@ def load_routes(path: Path) -> list[dict]:
                     "expected boolean"
                 )
 
+            if redirect_to is not None:
+                if not isinstance(redirect_to, str) or not redirect_to:
+                    fail(f"route '{host} {path_value}' has invalid 'redirect_to'")
+                if not redirect_to.startswith("/"):
+                    fail(
+                        f"redirect_to '{redirect_to}' for host '{host}' must start with '/'"
+                    )
+                if "strip_prefix" in route:
+                    fail(
+                        f"route '{host} {path_value}' cannot use 'strip_prefix' with "
+                        "'redirect_to'"
+                    )
+            else:
+                if not isinstance(upstream, str) or not upstream:
+                    fail(f"route '{host} {path_value}' has invalid 'upstream'")
+                if not (upstream.startswith("http://") or upstream.startswith("https://")):
+                    fail(
+                        f"upstream '{upstream}' for host '{host}' must start with "
+                        "'http://' or 'https://'"
+                    )
+
             normalized_path = normalize_path(path_value)
             key = (host, normalized_path)
             if key in seen_pairs:
                 fail(f"duplicate route detected for host '{host}' and path '{normalized_path}'")
             seen_pairs.add(key)
 
-            normalized_routes.append(
-                {
-                    "path": normalized_path,
-                    "upstream": upstream,
-                    "strip_prefix": strip_prefix,
-                }
-            )
+            normalized_route = {"path": normalized_path}
+            if redirect_to is not None:
+                normalized_route["redirect_to"] = redirect_to
+            else:
+                normalized_route["upstream"] = upstream
+                normalized_route["strip_prefix"] = strip_prefix
+
+            normalized_routes.append(normalized_route)
 
         normalized_routes.sort(key=lambda item: len(item["path"]), reverse=True)
         normalized_domains.append({"host": host, "routes": normalized_routes})
@@ -146,6 +168,22 @@ def render_route_locations(routes: list[dict]) -> str:
 
     for route in routes:
         path = route["path"]
+        redirect_to = route.get("redirect_to")
+
+        if redirect_to is not None:
+            if path == "/":
+                block = f"""\
+        location = / {{
+            return 302 {redirect_to};
+        }}"""
+            else:
+                block = f"""\
+        location = {path} {{
+            return 302 {redirect_to};
+        }}"""
+            blocks.append(block)
+            continue
+
         upstream = route["upstream"]
         strip_prefix = route["strip_prefix"]
 
