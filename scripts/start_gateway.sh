@@ -14,10 +14,23 @@ fi
 
 : "${GATEWAY_NETWORK:=gateway-net}"
 
+if docker compose version >/dev/null 2>&1; then
+  compose() {
+    docker compose "$@"
+  }
+elif command -v docker-compose >/dev/null 2>&1; then
+  compose() {
+    docker-compose "$@"
+  }
+else
+  echo "ERROR: Docker Compose is not available. Install 'docker compose' or 'docker-compose'." >&2
+  exit 1
+fi
+
 if ! docker network inspect "${GATEWAY_NETWORK}" >/dev/null 2>&1; then
   echo "Creating Docker network '${GATEWAY_NETWORK}'"
   docker network create "${GATEWAY_NETWORK}" >/dev/null
 fi
 
 echo "Starting gateway containers"
-docker compose -f "${PROJECT_DIR}/compose.yaml" --project-directory "${PROJECT_DIR}" up -d --build
+compose -f "${PROJECT_DIR}/compose.yaml" --project-directory "${PROJECT_DIR}" up -d --build

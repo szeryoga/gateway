@@ -34,6 +34,19 @@ if [ "${CERTBOT_EMAIL:-}" = "" ]; then
   exit 1
 fi
 
+if docker compose version >/dev/null 2>&1; then
+  compose() {
+    docker compose "$@"
+  }
+elif command -v docker-compose >/dev/null 2>&1; then
+  compose() {
+    docker-compose "$@"
+  }
+else
+  echo "ERROR: Docker Compose is not available. Install 'docker compose' or 'docker-compose'." >&2
+  exit 1
+fi
+
 cert_exists() {
   docker run --rm \
     -v "${PROJECT_DIR}/certbot/conf:/etc/letsencrypt" \
@@ -55,7 +68,7 @@ if ! docker network inspect "${GATEWAY_NETWORK}" >/dev/null 2>&1; then
 fi
 
 echo "Ensuring gateway container is running"
-docker compose -f "${PROJECT_DIR}/compose.yaml" --project-directory "${PROJECT_DIR}" up -d gateway
+compose -f "${PROJECT_DIR}/compose.yaml" --project-directory "${PROJECT_DIR}" up -d gateway
 
 CERT_EXISTED=0
 
@@ -87,5 +100,5 @@ if [ "${CERT_EXISTED}" -eq 1 ] && gateway_has_domain_cert_config; then
   docker exec gateway nginx -s reload
 else
   echo "Restarting gateway to switch to Let's Encrypt certificate"
-  docker compose -f "${PROJECT_DIR}/compose.yaml" --project-directory "${PROJECT_DIR}" restart gateway
+  compose -f "${PROJECT_DIR}/compose.yaml" --project-directory "${PROJECT_DIR}" restart gateway
 fi
