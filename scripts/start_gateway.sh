@@ -14,6 +14,15 @@ fi
 
 : "${GATEWAY_NETWORK:=gateway-net}"
 
+CLIENT_CA_CERT="${PROJECT_DIR}/secrets/client-ca/ca.crt"
+
+if [ ! -f "${CLIENT_CA_CERT}" ]; then
+  echo "ERROR: Client CA certificate not found: ${CLIENT_CA_CERT}" >&2
+  echo "Generate it with:" >&2
+  echo "  ${PROJECT_DIR}/scripts_mtls/create_client_ca.sh ${PROJECT_DIR}/secrets/client-ca" >&2
+  exit 1
+fi
+
 if docker compose version >/dev/null 2>&1; then
   compose() {
     docker compose "$@"
