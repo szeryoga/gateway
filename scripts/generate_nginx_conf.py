@@ -42,6 +42,17 @@ def normalize_path(path: str) -> str:
     return path.rstrip("/")
 
 
+def render_client_certificate_block(client_ca: str | None, require_client_cert: bool) -> str:
+    if not require_client_cert:
+        return ""
+
+    return (
+        f"        ssl_client_certificate {client_ca};\n"
+        "        ssl_verify_client on;\n"
+        "        ssl_verify_depth 2;\n"
+    )
+
+
 def load_routes(path: Path) -> list[dict]:
     if not path.exists():
         fail(f"routes file not found: {path}")
@@ -69,6 +80,18 @@ def load_routes(path: Path) -> list[dict]:
         if not isinstance(host, str) or not host.strip():
             fail(f"domain entry #{domain_index} has empty or invalid 'host'")
         host = host.strip()
+
+        client_ca = domain.get("client_ca")
+        if client_ca is not None and (not isinstance(client_ca, str) or not client_ca.strip()):
+            fail(f"domain '{host}' has invalid 'client_ca'")
+        if isinstance(client_ca, str):
+            client_ca = client_ca.strip()
+
+        require_client_cert = domain.get("require_client_cert", False)
+        if not isinstance(require_client_cert, bool):
+            fail(f"domain '{host}' has invalid 'require_client_cert': expected boolean")
+        if require_client_cert and not client_ca:
+            fail(f"domain '{host}' requires 'client_ca' when 'require_client_cert' is true")
 
         routes = domain.get("routes")
         if not isinstance(routes, list) or not routes:
@@ -139,7 +162,14 @@ def load_routes(path: Path) -> list[dict]:
             normalized_routes.append(normalized_route)
 
         normalized_routes.sort(key=lambda item: len(item["path"]), reverse=True)
-        normalized_domains.append({"host": host, "routes": normalized_routes})
+        normalized_domains.append(
+            {
+                "host": host,
+                "client_ca": client_ca,
+                "require_client_cert": require_client_cert,
+                "routes": normalized_routes,
+            }
+        )
 
     return normalized_domains
 
@@ -279,9 +309,17 @@ def resolve_certificate_paths(host: str) -> tuple[str, str]:
     return "/etc/nginx/fallback/default.crt", "/etc/nginx/fallback/default.key"
 
 
-def render_https_server(host: str, routes: list[dict]) -> str:
+def render_https_server(
+    host: str,
+    routes: list[dict],
+    client_ca: str | None = None,
+    require_client_cert: bool = False,
+) -> str:
     route_locations = render_route_locations(routes)
     ssl_certificate, ssl_certificate_key = resolve_certificate_paths(host)
+    client_certificate_block = render_client_certificate_block(
+        client_ca, require_client_cert
+    )
     return f"""\
     server {{
         listen 443 ssl;
@@ -291,6 +329,7 @@ def render_https_server(host: str, routes: list[dict]) -> str:
 
         ssl_certificate {ssl_certificate};
         ssl_certificate_key {ssl_certificate_key};
+{client_certificate_block}
 
 {route_locations}
     }}"""
@@ -300,9 +339,13 @@ def render_domain_servers(domains: list[dict]) -> str:
     servers: list[str] = []
     for domain in domains:
         host = domain["host"]
+        client_ca = domain.get("client_ca")
+        require_client_cert = domain.get("require_client_cert", False)
         routes = domain["routes"]
         servers.append(render_http_server(host))
-        servers.append(render_https_server(host, routes))
+        servers.append(
+            render_https_server(host, routes, client_ca, require_client_cert)
+        )
     return "\n\n".join(servers)
 
 

@@ -14,6 +14,7 @@ services:
       - ./nginx/nginx.conf.template:/app/nginx/nginx.conf.template:ro
       - ./certbot/www:/var/www/certbot:ro
       - ./certbot/conf:/etc/letsencrypt:ro
+      - /home/szeryoga/devel/bilet/secrets/client-ca/ca.crt:/etc/nginx/client-ca/bilet-client-ca.crt:ro
     networks:
       - gateway
 
