@@ -195,6 +195,7 @@ def render_proxy_headers(indent: str = " " * 12) -> str:
 def render_route_locations(routes: list[dict]) -> str:
     blocks: list[str] = []
     headers = render_proxy_headers()
+    has_root_route = any(route["path"] == "/" for route in routes)
 
     for route in routes:
         path = route["path"]
@@ -268,12 +269,13 @@ def render_route_locations(routes: list[dict]) -> str:
 
         blocks.append(block)
 
-    blocks.append(
-        """\
+    if not has_root_route:
+        blocks.append(
+            """\
         location / {
             return 404;
         }"""
-    )
+        )
     return "\n\n".join(blocks)
 
 
