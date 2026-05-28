@@ -42,6 +42,11 @@ domains:
         upstream: http://quiz10-backend:8000
         strip_prefix: false
 
+  - host: echo.appline.tw1.ru
+    routes:
+      - path: /app
+        upstream: http://echo-frontend:80
+
   - host: poputi.appline.tw1.ru
     routes:
       - path: /app
