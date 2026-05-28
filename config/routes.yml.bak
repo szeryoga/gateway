@@ -24,6 +24,14 @@ domains:
       - path: /app
         upstream: http://portal-frontend:80
 
+  - host: bilet.appline.tw1.ru
+    client_ca: /etc/nginx/client-ca/bilet-client-ca.crt
+    require_client_cert: true
+    routes:
+      - path: /
+        upstream: http://bilet-frontend:8000
+        strip_prefix: false
+
   - host: quiz10.appline.tw1.ru
     routes:
       - path: /app
