@@ -4,8 +4,16 @@ set -eu
 
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd)
 PROJECT_DIR=$(CDPATH= cd -- "${SCRIPT_DIR}/.." && pwd)
+
+if [ -f "${PROJECT_DIR}/.env" ]; then
+  set -a
+  # shellcheck disable=SC1091
+  . "${PROJECT_DIR}/.env"
+  set +a
+fi
+
 CRON_SCHEDULE="${CRON_SCHEDULE:-0 3,15 * * *}"
-ROUTES_FILE="${PROJECT_DIR}/config/routes.yml"
+ROUTES_FILE="${GATEWAY_ROUTES_FILE:-${PROJECT_DIR}/config/routes.yml}"
 START_MARKER="# BEGIN gateway-certbot-renew"
 END_MARKER="# END gateway-certbot-renew"
 MODE="install"

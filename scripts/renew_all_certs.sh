@@ -4,7 +4,15 @@ set -eu
 
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd)
 PROJECT_DIR=$(CDPATH= cd -- "${SCRIPT_DIR}/.." && pwd)
-ROUTES_FILE="${PROJECT_DIR}/config/routes.yml"
+
+if [ -f "${PROJECT_DIR}/.env" ]; then
+  set -a
+  # shellcheck disable=SC1091
+  . "${PROJECT_DIR}/.env"
+  set +a
+fi
+
+ROUTES_FILE="${GATEWAY_ROUTES_FILE:-${PROJECT_DIR}/config/routes.yml}"
 LIST_ONLY=0
 
 usage() {

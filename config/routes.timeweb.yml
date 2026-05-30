@@ -48,9 +48,3 @@ domains:
       - path: /api
         upstream: http://poputi-backend:8000
         strip_prefix: false
-
-  - host: storage.appline.tw1.ru
-    routes:
-      - path: /
-        upstream: http://storage-s3:9000
-        strip_prefix: false

@@ -1,0 +1,12 @@
+domains:
+  - host: kiosk.etalonfood.com
+    routes:
+      - path: /
+        redirect_to: /app
+      - path: /app
+        upstream: http://kiosk-frontend:80
+      - path: /admin
+        upstream: http://kiosk-admin:80
+      - path: /api
+        upstream: http://kiosk-backend:8000
+        strip_prefix: false
