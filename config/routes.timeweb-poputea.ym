@@ -1,0 +1,12 @@
+domains:
+  - host: poputea.ru
+    routes:
+      - path: /
+        redirect_to: /app
+      - path: /app
+        upstream: http://poputi-frontend:80
+      - path: /admin
+        upstream: http://poputi-admin:80
+      - path: /api
+        upstream: http://poputi-backend:8000
+        strip_prefix: false

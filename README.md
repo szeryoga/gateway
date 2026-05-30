@@ -5,7 +5,7 @@ Production-ready reverse proxy gateway на базе Nginx с генерацие
 ## Что внутри
 
 - Docker-контейнер с Nginx, Python и генератором конфига.
-- Маршрутизация в [`config/routes.yml`](./config/routes.yml).
+- Маршрутизация в [`config/routes.yml`](./config/routes.yml) или в файле, указанном через `GATEWAY_ROUTES_FILE`.
 - Генерация итогового `/etc/nginx/nginx.conf` при старте контейнера.
 - Проверка конфига через `nginx -t` перед запуском.
 - HTTP to HTTPS redirect для всего трафика, кроме ACME HTTP-01 challenge.
@@ -15,7 +15,7 @@ Production-ready reverse proxy gateway на базе Nginx с генерацие
 
 - `.env.example` — пример переменных окружения.
 - `compose.yaml` — запуск `gateway` и подключение к external Docker network.
-- `config/routes.yml` — декларативные маршруты по доменам.
+- `config/routes.yml` — дефолтный файл декларативных маршрутов по доменам.
 - `scripts/generate_nginx_conf.py` — валидация YAML и генерация `nginx.conf`.
 - `scripts/entrypoint.sh` — генерация конфига, `nginx -t`, запуск Nginx.
 - `scripts/start_gateway.sh` — старт gateway на production-сервере с автосозданием Docker network.
@@ -60,8 +60,25 @@ cp .env.example .env
 GATEWAY_NETWORK=gateway-net
 GATEWAY_HTTP_PORT=80
 GATEWAY_HTTPS_PORT=443
+GATEWAY_ROUTES_FILE=./config/routes.yml
 CERTBOT_EMAIL=admin@example.com
 ```
+
+Если у вас разные наборы доменов/маршрутов на разных серверах, держите несколько файлов рядом, например:
+
+```text
+config/routes.timeweb.yml
+config/routes.timeweb-poputea.yml
+config/routes.karabas.yml
+```
+
+И на каждом сервере указывайте свой файл через `.env`:
+
+```env
+GATEWAY_ROUTES_FILE=./config/routes.timeweb.yml
+```
+
+Тогда один и тот же `compose.yaml`, `start_gateway.sh`, `renew_all_certs.sh` и `install_certbot_cron.sh` будут использовать правильный конфиг без ручного переименования файлов.
 
 ## 3. Подготовить каталоги для Certbot
 
@@ -95,7 +112,7 @@ docker compose logs -f gateway
 docker exec gateway nginx -t
 ```
 
-Если `config/routes.yml` невалиден или итоговый `nginx.conf` некорректен, контейнер завершится с ошибкой на старте.
+Если файл маршрутов из `GATEWAY_ROUTES_FILE` невалиден или итоговый `nginx.conf` некорректен, контейнер завершится с ошибкой на старте.
 
 Если для домена сертификат еще не выпущен, gateway стартует с fallback self-signed сертификатом. Это позволяет поднять контейнер и пройти ACME HTTP-01 challenge по `80` порту до получения боевого сертификата.
 
@@ -252,13 +269,13 @@ WantedBy=timers.target
 
 Скрипт сам выполняет `docker exec gateway nginx -s reload` после успешного обновления существующего сертификата. Для первичного выпуска он делает `docker compose restart gateway`, чтобы gateway пересобрал `nginx.conf` и переключился с fallback сертификата на настоящий.
 
-Для продления всех доменов из `config/routes.yml` можно использовать:
+Для продления всех доменов из текущего файла маршрутов (`GATEWAY_ROUTES_FILE` или `config/routes.yml` по умолчанию) можно использовать:
 
 ```bash
 ./scripts/renew_all_certs.sh
 ```
 
-Скрипт извлекает все `host` из `config/routes.yml` и последовательно запускает `./scripts/certbot.sh <domain>`.
+Скрипт извлекает все `host` из выбранного файла маршрутов и последовательно запускает `./scripts/certbot.sh <domain>`.
 
 Чтобы автоматически добавить или обновить managed-запись в `crontab`, используйте:
 
@@ -295,6 +312,6 @@ WantedBy=timers.target
 1. Контейнер запускает `scripts/entrypoint.sh`.
 2. `entrypoint.sh` создает fallback TLS-сертификат для `default_server`.
 3. Затем запускается `scripts/generate_nginx_conf.py`.
-4. Генератор читает `config/routes.yml`, валидирует его и собирает `/etc/nginx/nginx.conf`.
+4. Генератор читает файл маршрутов, смонтированный в `/app/config/routes.yml`, валидирует его и собирает `/etc/nginx/nginx.conf`.
 5. Выполняется `nginx -t`.
 6. Если проверка успешна, стартует `nginx -g 'daemon off;'`.
