@@ -1,5 +1,5 @@
 domains:
-  - host: karabas.etalonfood.com
+  - host: kiosk.appline.fun
     routes:
       - path: /
         redirect_to: /app
