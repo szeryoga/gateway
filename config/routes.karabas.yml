@@ -10,3 +10,14 @@ domains:
       - path: /api
         upstream: http://kiosk-backend:8000
         strip_prefix: false
+
+  - host: karabas.etalonfood.com
+    routes:
+      - path: /
+        redirect_to: /app
+      - path: /app
+        upstream: http://karabas-frontend:80
+      - path: /admin
+        upstream: http://karabas-admin:80
+      - path: /api
+        upstream: http://karabas-backend:8000
