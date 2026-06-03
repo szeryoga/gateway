@@ -21,3 +21,13 @@ domains:
         upstream: http://karabas-admin:80
       - path: /api
         upstream: http://karabas-backend:8000
+
+  - host: trends.appline.fun
+    routes:
+      - path: /
+        redirect_to: /app
+      - path: /app
+        upstream: http://trends-frontend:80
+      - path: /api
+        upstream: http://trends-backend:8000
+        strip_prefix: false
